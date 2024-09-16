@@ -1,6 +1,6 @@
 provider_installation {
   dev_overrides {
-    "integrations/github" = "~/go/bin/"
+    "integrations/github" = "/Users/zehui.peng/Documents/opensource/terraform-provider-github/examples/repository_ruleset/provider"
   }
 
   direct {}

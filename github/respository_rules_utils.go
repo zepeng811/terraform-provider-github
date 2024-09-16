@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/google/go-github/v63/github"
+	"github.com/google/go-github/v64/github"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -362,6 +362,21 @@ func expandRules(input []interface{}, org bool) []*github.RepositoryRule {
 		rulesSlice = append(rulesSlice, github.NewRequiredWorkflowsRule(params))
 	}
 
+	// Merge Queue Rule
+	if v, ok := rulesMap["merge_queue"].([]interface{}); ok && len(v) != 0 {
+		mergeQueueRuleMap := v[0].(map[string]interface{})
+		params := &github.MergeQueueRuleParameters{
+			CheckResponseTimeoutMinutes:  mergeQueueRuleMap["check_response_timeout_minutes"].(int),
+			GroupingStrategy:             mergeQueueRuleMap["grouping_strategy"].(string),
+			MaxEntriesToBuild:            mergeQueueRuleMap["max_entries_to_build"].(int),
+			MaxEntriesToMerge:            mergeQueueRuleMap["max_entries_to_merge"].(int),
+			MergeMethod:                  mergeQueueRuleMap["merge_method"].(string),
+			MinEntriesToMerge:            mergeQueueRuleMap["min_entries_to_merge"].(int),
+			MinEntriesToMergeWaitMinutes: mergeQueueRuleMap["min_entries_to_merge_wait_minutes"].(int),
+		}
+		rulesSlice = append(rulesSlice, github.NewMergeQueueRule(params))
+	}
+
 	return rulesSlice
 }
 
@@ -471,6 +486,25 @@ func flattenRules(rules []*github.RepositoryRule, org bool) []interface{} {
 			rule := make(map[string]interface{})
 			rule["required_check"] = requiredStatusChecksSlice
 			rule["strict_required_status_checks_policy"] = params.StrictRequiredStatusChecksPolicy
+			rulesMap[v.Type] = []map[string]interface{}{rule}
+
+		case "merge_queue":
+			var params github.MergeQueueRuleParameters
+
+			err := json.Unmarshal(*v.Parameters, &params)
+			if err != nil {
+				log.Printf("[INFO] Unexpected error unmarshalling rule %s with parameters: %v",
+					v.Type, v.Parameters)
+			}
+
+			rule := make(map[string]interface{})
+			rule["check_response_timeout_minutes"] = params.CheckResponseTimeoutMinutes
+			rule["grouping_strategy"] = params.GroupingStrategy
+			rule["max_entries_to_build"] = params.MaxEntriesToBuild
+			rule["max_entries_to_merge"] = params.MaxEntriesToMerge
+			rule["merge_method"] = params.MergeMethod
+			rule["min_entries_to_merge"] = params.MinEntriesToMerge
+			rule["min_entries_to_merge_wait_minutes"] = params.MinEntriesToMergeWaitMinutes
 			rulesMap[v.Type] = []map[string]interface{}{rule}
 		}
 	}
